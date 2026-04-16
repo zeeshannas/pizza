@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Orders</h1>
+    <p class="text-muted-op mb-0">Recent sales — open any order for full detail or PDF.</p>
+  </div>
+  <a href="{{ url_for('pos.pos_home') }}" class="btn btn-op-primary"><i class="bi bi-shop-window me-1"></i> POS</a>
+</div>
+
+<div class="op-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-darkish table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="fw-semibold">#{{ o.id }}</td>
+          <td class="text-muted-op">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{% if o.customer %}{{ o.customer.name }}{% else %}—{% endif %}</td>
+          <td>{{ o.total|money }}</td>
+          <td>{{ o.status }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-op-ghost" href="{{ url_for('orders.order_detail', oid=o.id) }}">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted-op py-4">No orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

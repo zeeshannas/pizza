@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}POS{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Point of Sale</h1>
+    <p class="text-muted-op mb-0">Add pizzas to the cart, pick a customer, checkout — stock updates automatically. (<strong>{{ config.CURRENCY }}</strong>)</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="op-card p-3">
+      <div class="row g-3">
+        {% for p in products %}
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 border border-secondary" style="background:var(--op-surface-2);">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold">{{ p.name }} <span class="badge bg-secondary">{{ p.size }}</span></div>
+                <div class="text-muted-op small">{{ p.price|money }}</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-op-primary add-to-cart" data-id="{{ p.id }}" data-label="{{ p.name }} ({{ p.size }})" data-price="{{ p.price }}">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted-op">No active products. Add products first.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="op-card p-4 sticky-top" style="top:1rem;">
+      <h5 class="mb-3">Cart</h5>
+      <div class="mb-3">
+        <label class="form-label">Customer</label>
+        <select id="customer_id" class="form-select" required>
+          <option value="">Select customer…</option>
+          {% for c in customers %}
+          <option value="{{ c.id }}">{{ c.name }} — {{ c.phone }}</option>
+          {% endfor %}
+        </select>
+        <a href="{{ url_for('customers.add_customer') }}" class="small mt-1 d-inline-block" style="color:var(--op-accent)">+ New customer</a>
+      </div>
+      <ul class="list-group list-group-flush mb-3" id="cart-lines" style="min-height:120px;">
+        <li class="list-group-item text-muted-op border-secondary text-center" style="background:transparent;" id="cart-empty">Cart is empty</li>
+      </ul>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted-op">Total</span>
+        <span class="fs-4 fw-bold" id="cart-total">{{ 0|money }}</span>
+      </div>
+      <button type="button" class="btn btn-op-primary w-100 py-2" id="btn-checkout" disabled>Complete sale</button>
+      <div id="checkout-msg" class="small mt-2 text-muted-op"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+window.__OP_CURRENCY__ = {{ config.CURRENCY|tojson }};
+function fmtMoney(n) {
+  var v = Number(n);
+  var parts = v.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  var s = parts.join('.');
+  return (window.__OP_CURRENCY__ === 'USD') ? ('$' + s) : ('Rs. ' + s);
+}
+(function(){
+  const cart = new Map();
+  const linesEl = document.getElementById('cart-lines');
+  const emptyEl = document.getElementById('cart-empty');
+  const totalEl = document.getElementById('cart-total');
+  const btnCheckout = document.getElementById('btn-checkout');
+  const customerEl = document.getElementById('customer_id');
+  const msgEl = document.getElementById('checkout-msg');
+
+  function syncBtn() {
+    btnCheckout.disabled = !(customerEl.value && cart.size > 0);
+  }
+
+  function render() {
+    linesEl.querySelectorAll('.cart-line').forEach(e => e.remove());
+    let total = 0;
+    if (cart.size === 0) {
+      emptyEl.style.display = '';
+      totalEl.textContent = fmtMoney(0);
+      syncBtn();
+      return;
+    }
+    emptyEl.style.display = 'none';
+    cart.forEach((row, pid) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item cart-line d-flex justify-content-between align-items-center border-secondary';
+      li.style.background = 'transparent';
+      li.style.color = 'var(--op-text)';
+      const sub = row.price * row.qty;
+      total += sub;
+      li.innerHTML = '<span>' + row.label + ' × ' + row.qty + '</span>' +
+        '<span class="d-flex align-items-center gap-2">' +
+          '<span class="text-muted-op">' + fmtMoney(sub) + '</span>' +
+          '<button type="button" class="btn btn-sm btn-outline-light" data-dec="' + pid + '">−</button>' +
+        '</span>';
+      linesEl.appendChild(li);
+    });
+    totalEl.textContent = fmtMoney(total);
+    syncBtn();
+  }
+
+  document.querySelectorAll('.add-to-cart').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const label = btn.dataset.label;
+      const price = parseFloat(btn.dataset.price);
+      const cur = cart.get(id) || { label, price, qty: 0 };
+      cur.qty += 1;
+      cart.set(id, cur);
+      render();
+    });
+  });
+
+  linesEl.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.matches('button[data-dec]')) {
+      const pid = t.getAttribute('data-dec');
+      const row = cart.get(pid);
+      if (!row) return;
+      row.qty -= 1;
+      if (row.qty <= 0) cart.delete(pid); else cart.set(pid, row);
+      render();
+    }
+  });
+
+  customerEl.addEventListener('change', syncBtn);
+
+  btnCheckout.addEventListener('click', async () => {
+    msgEl.textContent = '';
+    const customer_id = parseInt(customerEl.value, 10);
+    const items = [];
+    cart.forEach((row, pid) => {
+      items.push({ product_id: parseInt(pid, 10), quantity: row.qty });
+    });
+    const res = await fetch('{{ url_for("pos.checkout") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id, items })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      var viewUrl = '{{ url_for("orders.order_detail", oid=999999) }}'.replace('999999', String(data.order_id));
+      msgEl.innerHTML = '<span class="text-success">Order #' + data.order_id + ' — ' + fmtMoney(data.total) +
+        ' · <a href="' + viewUrl + '" style="color:var(--op-accent)">View order</a></span>';
+      cart.clear();
+      render();
+    } else {
+      msgEl.innerHTML = '<span class="text-danger">' + (data.error || 'Checkout failed') + '</span>';
+    }
+  });
+
+  render();
+})();
+</script>
+{% endblock %}

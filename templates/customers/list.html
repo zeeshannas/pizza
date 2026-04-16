@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Customers</h1>
+    <p class="text-muted-op mb-0">CRM-lite: contact info and order history by phone.</p>
+  </div>
+  <a href="{{ url_for('customers.add_customer') }}" class="btn btn-op-primary"><i class="bi bi-person-plus me-1"></i> Add customer</a>
+</div>
+
+<div class="op-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-darkish table-hover mb-0">
+      <thead>
+        <tr><th>Name</th><th>Phone</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td class="fw-semibold"><a href="{{ url_for('customers.customer_detail', cid=c.id) }}" class="text-decoration-none" style="color:var(--op-accent)">{{ c.name }}</a></td>
+          <td class="text-muted-op">{{ c.phone }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-op-ghost" href="{{ url_for('customers.edit_customer', cid=c.id) }}">Edit</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="text-center text-muted-op py-4">No customers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

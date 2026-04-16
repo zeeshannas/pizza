@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Reports</h1>
+<p class="text-muted-op mb-4">Daily &amp; monthly performance, estimated COGS, and top sellers.</p>
+
+<form class="row g-2 mb-4" method="get">
+  <div class="col-auto">
+    <label class="form-label small text-muted-op">Day</label>
+    <input type="date" name="day" class="form-control" value="{{ selected_day }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small text-muted-op">Month</label>
+    <input type="number" name="month" class="form-control" min="1" max="12" value="{{ selected_month }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small text-muted-op">Year</label>
+    <input type="number" name="year" class="form-control" min="2000" max="2100" value="{{ selected_year }}">
+  </div>
+  <div class="col-auto d-flex align-items-end">
+    <button class="btn btn-op-primary" type="submit">Apply</button>
+  </div>
+</form>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3">Day · {{ daily.label }}</h5>
+      <ul class="list-unstyled mb-0">
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Revenue</span><strong>{{ daily.revenue|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Orders</span><strong>{{ daily.order_count }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Est. COGS</span><strong>{{ daily.estimated_cogs|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Purchases (spend)</span><strong>{{ daily.purchase_spend|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2"><span class="text-muted-op">Gross profit (est.)</span><strong style="color:var(--op-accent-2)">{{ daily.gross_profit|money }}</strong></li>
+      </ul>
+      <h6 class="mt-4 mb-2">Top sellers</h6>
+      {% if daily.top_products %}
+      <ul class="list-group list-group-flush">
+        {% for p in daily.top_products %}
+        <li class="list-group-item border-secondary d-flex justify-content-between" style="background:transparent;color:var(--op-text);">
+          <span>{{ p.label }}</span><span class="text-muted-op">{{ p.sales|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-op small mb-0">No data.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3">Month · {{ monthly.label }}</h5>
+      <ul class="list-unstyled mb-0">
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Revenue</span><strong>{{ monthly.revenue|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Orders</span><strong>{{ monthly.order_count }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Est. COGS</span><strong>{{ monthly.estimated_cogs|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2 border-bottom border-secondary"><span class="text-muted-op">Purchases (spend)</span><strong>{{ monthly.purchase_spend|money }}</strong></li>
+        <li class="d-flex justify-content-between py-2"><span class="text-muted-op">Gross profit (est.)</span><strong style="color:var(--op-accent-2)">{{ monthly.gross_profit|money }}</strong></li>
+      </ul>
+      <h6 class="mt-4 mb-2">Top sellers</h6>
+      {% if monthly.top_products %}
+      <ul class="list-group list-group-flush">
+        {% for p in monthly.top_products %}
+        <li class="list-group-item border-secondary d-flex justify-content-between" style="background:transparent;color:var(--op-text);">
+          <span>{{ p.label }}</span><span class="text-muted-op">{{ p.sales|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-op small mb-0">No data.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<p class="text-muted-op small mt-4 mb-0">
+  COGS uses current ingredient unit costs × recipe usage per order (approximation). Record purchases to keep unit costs realistic.
+</p>
+{% endblock %}

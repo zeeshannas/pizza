@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">User management</h1>
+<p class="text-muted-op mb-4">Create staff accounts and manage admin access.</p>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="op-card p-4">
+      <h5 class="mb-3">Add user</h5>
+      <form method="post" action="{{ url_for('admin_users.add_user') }}">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" required autocomplete="off">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" name="password" class="form-control" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Role</label>
+          <select name="role" class="form-select">
+            <option value="staff">Staff</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button class="btn btn-op-primary">Create user</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="op-card p-0 overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-darkish mb-0">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td class="fw-semibold">{{ u.name }}</td>
+              <td class="text-muted-op">{{ u.email }}</td>
+              <td><span class="badge {% if u.role == 'admin' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ u.role }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

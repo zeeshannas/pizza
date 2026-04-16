@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Purchases{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Purchase history</h1>
+    <p class="text-muted-op mb-0">Stock receipts from suppliers — updates inventory &amp; weighted unit cost.</p>
+  </div>
+  <a href="{{ url_for('purchases.add_purchase') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> Record purchase</a>
+</div>
+
+<div class="op-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-darkish table-hover mb-0">
+      <thead>
+        <tr><th>Date</th><th>Ingredient</th><th>Qty</th><th>Total cost</th><th>Supplier</th></tr>
+      </thead>
+      <tbody>
+        {% for p in purchases %}
+        <tr>
+          <td class="text-muted-op">{{ p.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ p.ingredient.name }}</td>
+          <td>{{ "%.2f"|format(p.qty) }}</td>
+          <td>{{ p.cost|money }}</td>
+          <td>{{ p.supplier_name or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted-op py-4">No purchases recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

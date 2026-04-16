@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{% if ingredient %}Edit{% else %}Add{% endif %} ingredient{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{% if ingredient %}Edit{% else %}Add{% endif %} ingredient</h1>
+<div class="op-card p-4" style="max-width:520px;">
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Name</label>
+      <input type="text" name="name" class="form-control" required value="{{ ingredient.name if ingredient else '' }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Stock quantity</label>
+      <input type="number" step="0.01" name="stock_qty" class="form-control" value="{{ ingredient.stock_qty if ingredient else 0 }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Low stock threshold</label>
+      <input type="number" step="0.01" name="low_stock_threshold" class="form-control" value="{{ ingredient.low_stock_threshold if ingredient else 10 }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Unit cost (avg)</label>
+      <input type="number" step="0.01" name="unit_cost" class="form-control" value="{{ ingredient.unit_cost if ingredient else 0 }}">
+      <div class="form-text text-muted-op">Updated automatically when you record purchases.</div>
+    </div>
+    <button class="btn btn-op-primary">Save</button>
+    <a href="{{ url_for('inventory.list_ingredients') }}" class="btn btn-op-ghost ms-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Dashboard</h1>
+    <p class="text-muted-op mb-0">Overview of sales, stock risk, and today’s activity.</p>
+  </div>
+  <a href="{{ url_for('pos.pos_home') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> New sale (POS)</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-sm-6">
+    <div class="op-stat">
+      <div class="label">Today revenue</div>
+      <div class="value">{{ today.revenue|money }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="op-stat">
+      <div class="label">Orders today</div>
+      <div class="value">{{ orders_today }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="op-stat">
+      <div class="label">Month revenue</div>
+      <div class="value">{{ month.revenue|money }}</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="op-stat">
+      <div class="label">Est. gross profit (month)</div>
+      <div class="value">{{ month.gross_profit|money }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3"><i class="bi bi-exclamation-triangle me-2 text-warning"></i> Low stock</h5>
+      {% if low_stock %}
+      <div class="table-responsive">
+        <table class="table table-darkish table-sm align-middle mb-0">
+          <thead><tr><th>Ingredient</th><th>Stock</th><th>Threshold</th></tr></thead>
+          <tbody>
+            {% for i in low_stock %}
+            <tr>
+              <td>{{ i.name }}</td>
+              <td><span class="badge op-badge-low">{{ "%.2f"|format(i.stock_qty) }}</span></td>
+              <td class="text-muted-op">{{ "%.2f"|format(i.low_stock_threshold) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted-op mb-0">All ingredients are above their low-stock thresholds.</p>
+      {% endif %}
+      <a href="{{ url_for('inventory.list_ingredients') }}" class="btn btn-op-ghost btn-sm mt-3">Manage inventory</a>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3"><i class="bi bi-trophy me-2" style="color:var(--op-accent)"></i> Top sellers (month)</h5>
+      {% if month.top_products %}
+      <ul class="list-group list-group-flush">
+        {% for p in month.top_products %}
+        <li class="list-group-item d-flex justify-content-between align-items-center border-secondary"
+            style="background:transparent;color:var(--op-text);">
+          <span>{{ p.label }}</span>
+          <span class="text-muted-op">{{ p.units }} pcs · {{ p.sales|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-op mb-0">No sales recorded in this month yet.</p>
+      {% endif %}
+      <a href="{{ url_for('reports.reports_home') }}" class="btn btn-op-ghost btn-sm mt-3">Full reports</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

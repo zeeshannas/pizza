@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h3 mb-1">{{ customer.name }}</h1>
+    <p class="text-muted-op mb-0"><i class="bi bi-telephone me-1"></i>{{ customer.phone }}</p>
+  </div>
+  <a href="{{ url_for('customers.edit_customer', cid=customer.id) }}" class="btn btn-op-ghost">Edit</a>
+</div>
+
+<div class="op-card p-4">
+  <h5 class="mb-3">Order history</h5>
+  {% if orders %}
+  <div class="table-responsive">
+    <table class="table table-darkish mb-0">
+      <thead><tr><th>ID</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td><a href="{{ url_for('orders.order_detail', oid=o.id) }}" class="text-decoration-none" style="color:var(--op-accent)">#{{ o.id }}</a></td>
+          <td class="text-muted-op">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ o.total|money }}</td>
+          <td>{{ o.status }}</td>
+          <td class="text-end"><a class="btn btn-sm btn-op-ghost" href="{{ url_for('orders.order_detail', oid=o.id) }}">Detail</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted-op mb-0">No orders yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

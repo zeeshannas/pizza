@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Order #{{ order.id }}</h1>
+    <p class="text-muted-op mb-0">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ order.status }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ url_for('orders.order_pdf', oid=order.id) }}" class="btn btn-op-primary">
+      <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+    </a>
+    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-op-ghost">All orders</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="op-card p-4">
+      <h5 class="mb-3">Customer</h5>
+      {% if order.customer %}
+      <p class="mb-1 fw-semibold">{{ order.customer.name }}</p>
+      <p class="text-muted-op mb-0"><i class="bi bi-telephone me-1"></i>{{ order.customer.phone }}</p>
+      <a href="{{ url_for('customers.customer_detail', cid=order.customer.id) }}" class="btn btn-sm btn-op-ghost mt-3">Customer profile</a>
+      {% else %}
+      <p class="text-muted-op mb-0">—</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="op-card p-0 overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-darkish mb-0">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit</th>
+              <th class="text-end">Line</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in order.items|sort(attribute='id') %}
+            <tr>
+              <td>{% if line.product %}{{ line.product.display_label() }}{% else %}#{{ line.product_id }}{% endif %}</td>
+              <td class="text-end">{{ line.quantity }}</td>
+              <td class="text-end">{{ line.price|money }}</td>
+              <td class="text-end fw-semibold">{{ line.line_total|money }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="3" class="text-end">Total</th>
+              <th class="text-end">{{ order.total|money }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <p class="text-muted-op small mt-2 mb-0">Currency: <strong>{{ config.CURRENCY }}</strong> — set <code>CURRENCY=PKR</code> or <code>CURRENCY=USD</code> in environment.</p>
+  </div>
+</div>
+{% endblock %}

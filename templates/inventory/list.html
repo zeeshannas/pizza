@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Raw materials</h1>
+    <p class="text-muted-op mb-0">Cheese, dough, sauce, and more — stock levels &amp; alerts.</p>
+  </div>
+  <a href="{{ url_for('inventory.add_ingredient') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> Add ingredient</a>
+</div>
+
+<div class="op-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-darkish table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Stock</th>
+          <th>Low alert</th>
+          <th>Unit cost</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in ingredients %}
+        <tr>
+          <td class="fw-semibold">{{ i.name }}</td>
+          <td>
+            {% if i.is_low_stock %}
+            <span class="badge op-badge-low">{{ "%.2f"|format(i.stock_qty) }}</span>
+            {% else %}
+            {{ "%.2f"|format(i.stock_qty) }}
+            {% endif %}
+          </td>
+          <td class="text-muted-op">{{ "%.2f"|format(i.low_stock_threshold) }}</td>
+          <td>{{ i.unit_cost|money }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-op-ghost" href="{{ url_for('inventory.edit_ingredient', ing_id=i.id) }}">Edit</a>
+            {% if current_user.role == 'admin' %}
+            <form action="{{ url_for('inventory.delete_ingredient', ing_id=i.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete this ingredient?');">
+              <button class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted-op py-4">No ingredients yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

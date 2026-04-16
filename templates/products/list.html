@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Products</h1>
+    <p class="text-muted-op mb-0">Sizes S / M / L, pricing, and ingredient mapping.</p>
+  </div>
+  <a href="{{ url_for('products.add_product') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> New product</a>
+</div>
+
+<div class="op-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-darkish table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Size</th>
+          <th>Price</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td class="fw-semibold">{{ p.name }}</td>
+          <td><span class="badge bg-secondary">{{ p.size }}</span></td>
+          <td>{{ p.price|money }}</td>
+          <td>{% if p.is_active %}<span class="text-success">Active</span>{% else %}<span class="text-muted-op">Hidden</span>{% endif %}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-op-ghost" href="{{ url_for('products.edit_product', pid=p.id) }}">Edit</a>
+            {% if current_user.role == 'admin' %}
+            <form action="{{ url_for('products.delete_product', pid=p.id) }}" method="post" class="d-inline" onsubmit="return confirm('Delete product?');">
+              <button class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted-op py-4">No products yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

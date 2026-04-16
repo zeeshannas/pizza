@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Record purchase{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Record purchase</h1>
+<div class="op-card p-4" style="max-width:520px;">
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Ingredient</label>
+      <select name="ingredient_id" class="form-select" required>
+        <option value="">Select…</option>
+        {% for i in ingredients %}
+        <option value="{{ i.id }}">{{ i.name }} (stock {{ "%.1f"|format(i.stock_qty) }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Quantity received</label>
+      <input type="number" step="0.01" min="0.01" name="qty" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Total cost (full line)</label>
+      <input type="number" step="0.01" min="0" name="total_cost" class="form-control" required>
+      <div class="form-text text-muted-op">We spread this across quantity to update average unit cost.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Supplier (optional)</label>
+      <input type="text" name="supplier_name" class="form-control" placeholder="Vendor name">
+    </div>
+    <button class="btn btn-op-primary">Save purchase</button>
+    <a href="{{ url_for('purchases.list_purchases') }}" class="btn btn-op-ghost ms-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}
