@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Olive Pizza{% endblock %} · POS</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/olive-pizza-logo.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
@@ -15,8 +16,13 @@
   <div class="d-flex">
     <aside class="op-sidebar p-3 d-flex flex-column">
       <div class="mb-4 px-2">
-        <div class="op-brand fs-4">OLIVE <span>PIZZA</span></div>
-        <div class="text-muted-op small">Operations Console</div>
+        <a href="{{ url_for('main.dashboard') }}" class="op-brand-lockup text-decoration-none d-flex align-items-center gap-3">
+          <img src="{{ url_for('static', filename='images/olive-pizza-logo.svg') }}" alt="" class="op-logo" width="48" height="48" />
+          <div>
+            <div class="op-brand fs-5 mb-0">OLIVE <span>PIZZA</span></div>
+            <div class="text-muted-op small">Operations Console</div>
+          </div>
+        </a>
       </div>
       <nav class="nav flex-column op-nav flex-grow-1">
         <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">

@@ -114,3 +114,47 @@ def monthly_report(year: int | None = None, month: int | None = None) -> dict[st
     base["label"] = f"{y}-{m:02d}"
     base["top_products"] = top_products(start, end)
     return base
+
+
+def revenue_last_n_days(n: int = 7) -> list[dict[str, Any]]:
+    """Daily revenue for the last n calendar days (oldest first). Missing days are zero."""
+    end = date.today()
+    start = end - timedelta(days=n - 1)
+    start_dt = datetime(start.year, start.month, start.day)
+    end_dt = datetime(end.year, end.month, end.day) + timedelta(days=1)
+
+    q = (
+        select(
+            func.date(Order.created_at).label("day"),
+            func.coalesce(func.sum(Order.total), 0).label("revenue"),
+        )
+        .where(
+            Order.created_at >= start_dt,
+            Order.created_at < end_dt,
+            Order.status != "cancelled",
+        )
+        .group_by(func.date(Order.created_at))
+    )
+    raw: dict[str, float] = {}
+    for row in db.session.execute(q).all():
+        day_key = row.day
+        if hasattr(day_key, "isoformat"):
+            key = day_key.isoformat()
+        else:
+            key = str(day_key)
+        raw[key] = float(row.revenue or 0)
+
+    out: list[dict[str, Any]] = []
+    d = start
+    while d <= end:
+        key = d.isoformat()
+        rev = round(raw.get(key, 0.0), 2)
+        out.append(
+            {
+                "date": d,
+                "weekday": d.strftime("%a"),
+                "revenue": rev,
+            }
+        )
+        d += timedelta(days=1)
+    return out

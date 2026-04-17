@@ -1,37 +1,178 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-  <div>
-    <h1 class="h3 mb-1">Dashboard</h1>
-    <p class="text-muted-op mb-0">Overview of sales, stock risk, and today’s activity.</p>
+<div class="op-dashboard-hero op-card p-4 p-lg-4 mb-4">
+  <div class="row align-items-center g-4">
+    <div class="col-auto">
+      <img src="{{ url_for('static', filename='images/olive-pizza-logo.svg') }}" alt="" class="op-dashboard-logo" width="88" height="88" />
+    </div>
+    <div class="col">
+      <div class="op-hero-kicker text-muted-op text-uppercase small mb-1">Olive Pizza · Command center</div>
+      <h1 class="h3 mb-2 fw-bold">{% if hour_now < 12 %}Good morning{% elif hour_now < 17 %}Good afternoon{% else %}Good evening{% endif %}, {{ current_user.name.split()[0] if current_user.name else 'there' }}</h1>
+      <p class="text-muted-op mb-0">{{ now.strftime('%A, %d %B %Y') }} · Track sales, stock, and today’s pulse in one place.</p>
+    </div>
+    <div class="col-lg-auto d-flex flex-wrap gap-2 justify-content-lg-end">
+      <a href="{{ url_for('pos.pos_home') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> New sale</a>
+      <a href="{{ url_for('orders.list_orders') }}" class="btn btn-op-ghost"><i class="bi bi-receipt me-1"></i> Orders</a>
+      <a href="{{ url_for('reports.reports_home') }}" class="btn btn-op-ghost d-none d-md-inline-flex"><i class="bi bi-graph-up-arrow me-1"></i> Reports</a>
+    </div>
   </div>
-  <a href="{{ url_for('pos.pos_home') }}" class="btn btn-op-primary"><i class="bi bi-plus-lg me-1"></i> New sale (POS)</a>
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-3 col-sm-6">
-    <div class="op-stat">
-      <div class="label">Today revenue</div>
-      <div class="value">{{ today.revenue|money }}</div>
+  <div class="col-md-6 col-xl-3">
+    <div class="op-stat op-stat--accent h-100">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="label">Today revenue</div>
+          <div class="value">{{ today.revenue|money }}</div>
+        </div>
+        <span class="op-stat-icon"><i class="bi bi-currency-exchange"></i></span>
+      </div>
+      {% if yesterday.revenue > 0 and revenue_vs_yesterday_pct is not none %}
+      <div class="op-trend {% if revenue_vs_yesterday_pct >= 0 %}op-trend--up{% else %}op-trend--down{% endif %}">
+        <i class="bi {% if revenue_vs_yesterday_pct >= 0 %}bi-arrow-up-right{% else %}bi-arrow-down-right{% endif %}"></i>
+        {{ revenue_vs_yesterday_pct|abs }}% vs yesterday
+      </div>
+      {% elif today.revenue > 0 and yesterday.revenue <= 0 %}
+      <div class="op-trend op-trend--up"><i class="bi bi-stars"></i> First revenue vs quiet yesterday</div>
+      {% else %}
+      <div class="op-trend op-trend--muted">vs {{ yesterday.revenue|money }} yesterday</div>
+      {% endif %}
     </div>
   </div>
-  <div class="col-md-3 col-sm-6">
-    <div class="op-stat">
-      <div class="label">Orders today</div>
-      <div class="value">{{ orders_today }}</div>
+  <div class="col-md-6 col-xl-3">
+    <div class="op-stat h-100">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="label">Orders today</div>
+          <div class="value">{{ orders_today }}</div>
+        </div>
+        <span class="op-stat-icon op-stat-icon--muted"><i class="bi bi-bag-check"></i></span>
+      </div>
+      {% if yesterday.order_count > 0 and orders_vs_yesterday_pct is not none %}
+      <div class="op-trend {% if orders_vs_yesterday_pct >= 0 %}op-trend--up{% else %}op-trend--down{% endif %}">
+        <i class="bi {% if orders_vs_yesterday_pct >= 0 %}bi-arrow-up-right{% else %}bi-arrow-down-right{% endif %}"></i>
+        {{ orders_vs_yesterday_pct|abs }}% vs yesterday
+      </div>
+      {% elif orders_today > 0 and yesterday.order_count <= 0 %}
+      <div class="op-trend op-trend--up"><i class="bi bi-stars"></i> Momentum vs yesterday</div>
+      {% else %}
+      <div class="op-trend op-trend--muted">{{ yesterday.order_count }} orders yesterday</div>
+      {% endif %}
     </div>
   </div>
-  <div class="col-md-3 col-sm-6">
-    <div class="op-stat">
-      <div class="label">Month revenue</div>
-      <div class="value">{{ month.revenue|money }}</div>
+  <div class="col-md-6 col-xl-3">
+    <div class="op-stat h-100">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="label">Month revenue</div>
+          <div class="value">{{ month.revenue|money }}</div>
+        </div>
+        <span class="op-stat-icon op-stat-icon--muted"><i class="bi bi-calendar3"></i></span>
+      </div>
+      <div class="op-trend op-trend--muted">{{ month.order_count }} orders this month</div>
     </div>
   </div>
-  <div class="col-md-3 col-sm-6">
-    <div class="op-stat">
-      <div class="label">Est. gross profit (month)</div>
-      <div class="value">{{ month.gross_profit|money }}</div>
+  <div class="col-md-6 col-xl-3">
+    <div class="op-stat h-100">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="label">Est. gross profit (month)</div>
+          <div class="value">{{ month.gross_profit|money }}</div>
+        </div>
+        <span class="op-stat-icon op-stat-icon--muted"><i class="bi bi-piggy-bank"></i></span>
+      </div>
+      <div class="op-trend op-trend--muted">COGS est. {{ month.estimated_cogs|money }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-7">
+    <div class="op-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2" style="color:var(--op-accent)"></i> Revenue · last 7 days</h5>
+        <span class="small text-muted-op">Peak day: {% if week_revenue_max > 0 %}{{ week_revenue_max|money }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="op-chart d-flex align-items-end gap-1 gap-md-2" role="img" aria-label="Daily revenue last 7 days">
+        {% set wmax = week_revenue_max if week_revenue_max > 0 else 1 %}
+        {% for d in week_revenue %}
+        {% set pct = (d.revenue / wmax * 100) | round(1) %}
+        <div class="op-chart-col flex-grow-1 text-center">
+          <div class="op-chart-bar-wrap">
+            <div class="op-chart-bar" style="height: {% if d.revenue > 0 %}{{ [pct, 8] | max }}{% else %}0{% endif %}%;" title="{{ d.revenue|money }}"></div>
+          </div>
+          <div class="op-chart-label text-muted-op small mt-2">{{ d.weekday }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="op-card p-4 h-100 d-flex flex-column">
+      <h5 class="mb-3"><i class="bi bi-lightning-charge me-2 text-warning"></i> Quick actions</h5>
+      <div class="row g-2 flex-grow-1">
+        <div class="col-6">
+          <a href="{{ url_for('products.list_products') }}" class="op-quick-tile">
+            <i class="bi bi-grid-1x2"></i><span>Products</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('inventory.list_ingredients') }}" class="op-quick-tile">
+            <i class="bi bi-box-seam"></i><span>Inventory</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('customers.list_customers') }}" class="op-quick-tile">
+            <i class="bi bi-people"></i><span>Customers</span>
+          </a>
+        </div>
+        <div class="col-6">
+          <a href="{{ url_for('purchases.list_purchases') }}" class="op-quick-tile">
+            <i class="bi bi-truck"></i><span>Purchases</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-12">
+    <div class="op-card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2" style="color:var(--op-accent)"></i> Recent orders</h5>
+        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-op-ghost btn-sm">View all</a>
+      </div>
+      {% if recent_orders %}
+      <div class="table-responsive">
+        <table class="table table-darkish table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>When</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in recent_orders %}
+            <tr>
+              <td class="fw-semibold">#{{ o.id }}</td>
+              <td>{{ o.customer.name }}</td>
+              <td class="text-muted-op">{{ o.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+              <td class="text-end">{{ o.total|money }}</td>
+              <td class="text-end"><a class="btn btn-op-ghost btn-sm py-0" href="{{ url_for('orders.order_detail', oid=o.id) }}">Open</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted-op mb-0">No orders yet. Start from POS to create the first sale.</p>
+      {% endif %}
     </div>
   </div>
 </div>
