@@ -11,3 +11,5 @@ class Config:
     LOW_STOCK_DEFAULT = 10.0
     # PKR = Pakistan (default). USD = international — set env CURRENCY=USD or CURRENCY=PKR
     CURRENCY = os.environ.get("CURRENCY", "PKR").upper()
+    # Full public origin for payment return URLs (e.g. https://pos.yourdomain.com)
+    PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")

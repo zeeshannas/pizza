@@ -28,7 +28,10 @@ def create_app():
     from routes.reports import reports_bp
     from routes.admin_users import admin_users_bp
     from routes.orders import orders_bp
+    from routes.payments import payments_bp
+    from routes.finance import finance_bp
     from utils.currency import format_money
+    from utils.schema import ensure_all_schema
 
     @app.template_filter("money")
     def _money_filter(value):
@@ -44,12 +47,15 @@ def create_app():
     app.register_blueprint(reports_bp)
     app.register_blueprint(admin_users_bp)
     app.register_blueprint(orders_bp)
+    app.register_blueprint(payments_bp)
+    app.register_blueprint(finance_bp)
 
     @app.before_request
     def _login_required_global():
         if request.endpoint and (
             request.endpoint.startswith("auth.")
             or request.endpoint == "static"
+            or request.endpoint == "payments.gateway_callback"
         ):
             return None
         if not current_user.is_authenticated:
@@ -58,6 +64,7 @@ def create_app():
     with app.app_context():
         import models  # noqa: F401 — register models with SQLAlchemy metadata
         db.create_all()
+        ensure_all_schema()
 
     return app
 

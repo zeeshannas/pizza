@@ -25,7 +25,8 @@ def add_customer():
         if not name or not phone:
             flash("Name and phone are required.", "danger")
         else:
-            c = Customer(name=name, phone=phone)
+            addr = (request.form.get("address") or "").strip() or None
+            c = Customer(name=name, phone=phone, address=addr)
             db.session.add(c)
             db.session.commit()
             flash("Customer saved.", "success")
@@ -43,6 +44,7 @@ def edit_customer(cid: int):
     if request.method == "POST":
         c.name = (request.form.get("name") or "").strip() or c.name
         c.phone = (request.form.get("phone") or "").strip() or c.phone
+        c.address = (request.form.get("address") or "").strip() or None
         db.session.commit()
         flash("Customer updated.", "success")
         return redirect(url_for("customers.list_customers"))

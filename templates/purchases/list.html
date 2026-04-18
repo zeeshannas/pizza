@@ -13,7 +13,7 @@
   <div class="table-responsive">
     <table class="table table-darkish table-hover mb-0">
       <thead>
-        <tr><th>Date</th><th>Ingredient</th><th>Qty</th><th>Total cost</th><th>Supplier</th></tr>
+        <tr><th>Date</th><th>Ingredient</th><th>Qty</th><th>Total cost</th><th>Paid</th><th>Ref</th><th>Supplier</th></tr>
       </thead>
       <tbody>
         {% for p in purchases %}
@@ -22,10 +22,12 @@
           <td>{{ p.ingredient.name }}</td>
           <td>{{ "%.2f"|format(p.qty) }}</td>
           <td>{{ p.cost|money }}</td>
+          <td class="small">{{ p.payment_method|default('cash')|upper }}</td>
+          <td class="small text-muted-op">{{ p.payment_reference or '—' }}</td>
           <td>{{ p.supplier_name or '—' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="text-center text-muted-op py-4">No purchases recorded.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted-op py-4">No purchases recorded.</td></tr>
         {% endfor %}
       </tbody>
     </table>

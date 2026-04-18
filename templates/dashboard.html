@@ -19,6 +19,21 @@
   </div>
 </div>
 
+<div class="op-card p-4 mb-4">
+  <div class="row align-items-center g-3">
+    <div class="col-md">
+      <div class="small text-muted-op text-uppercase mb-1">Today · cash position</div>
+      <div class="d-flex flex-wrap align-items-baseline gap-3">
+        <span class="fs-3 fw-bold">{{ today_cf.net_cash|money }}</span>
+        <span class="text-muted-op small">Sales in <strong class="text-light">{{ today_cf.money_in|money }}</strong> · Purchases out <strong class="text-light">{{ today_cf.money_out|money }}</strong></span>
+      </div>
+    </div>
+    <div class="col-md-auto">
+      <a href="{{ url_for('finance.finance_home', preset='today') }}" class="btn btn-op-primary"><i class="bi bi-wallet2 me-1"></i> Payment center</a>
+    </div>
+  </div>
+</div>
+
 <div class="row g-3 mb-4">
   <div class="col-md-6 col-xl-3">
     <div class="op-stat op-stat--accent h-100">
@@ -152,6 +167,7 @@
             <tr>
               <th>#</th>
               <th>Customer</th>
+              <th>Service</th>
               <th>When</th>
               <th class="text-end">Total</th>
               <th></th>
@@ -162,6 +178,7 @@
             <tr>
               <td class="fw-semibold">#{{ o.id }}</td>
               <td>{{ o.customer.name }}</td>
+              <td><span class="badge bg-secondary">{{ o.fulfillment_type|default('takeaway')|upper }}</span></td>
               <td class="text-muted-op">{{ o.created_at.strftime('%d %b %Y, %H:%M') }}</td>
               <td class="text-end">{{ o.total|money }}</td>
               <td class="text-end"><a class="btn btn-op-ghost btn-sm py-0" href="{{ url_for('orders.order_detail', oid=o.id) }}">Open</a></td>

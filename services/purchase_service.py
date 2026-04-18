@@ -10,6 +10,8 @@ def record_purchase(
     qty: float,
     total_cost: float,
     supplier_name: str | None = None,
+    payment_method: str = "cash",
+    payment_reference: str | None = None,
 ) -> Purchase:
     if qty <= 0:
         raise ValueError("Quantity must be positive.")
@@ -32,11 +34,18 @@ def record_purchase(
         )
     ing.stock_qty = round(new_qty, 4)
 
+    pm = (payment_method or "cash").lower().strip()
+    if pm not in ("cash", "bank", "card", "other"):
+        raise ValueError("Invalid purchase payment method.")
+    ref = (payment_reference or "").strip() or None
+
     p = Purchase(
         ingredient_id=ingredient_id,
         qty=qty,
         cost=round(total_cost, 2),
         supplier_name=supplier_name,
+        payment_method=pm,
+        payment_reference=ref,
     )
     db.session.add(p)
     db.session.commit()

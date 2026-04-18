@@ -4,9 +4,25 @@
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
     <h1 class="h3 mb-1">Order #{{ order.id }}</h1>
-    <p class="text-muted-op mb-0">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ order.status }}</p>
+    <p class="text-muted-op mb-0">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }} ·
+      <span class="badge bg-info text-dark">{{ order.fulfillment_type|default('takeaway')|upper }}</span>
+      <span class="badge bg-secondary">{{ order.status }}</span>
+      {% if order.payment_status == 'pending' %}
+      <span class="badge bg-warning text-dark">Payment pending</span>
+      {% elif order.payment_status == 'paid' %}
+      <span class="badge bg-success">Paid</span>
+      {% elif order.payment_status == 'failed' %}
+      <span class="badge bg-danger">Payment failed</span>
+      {% endif %}
+    </p>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    {% if order.payment_status == 'pending' and order.payment_method in ['jazzcash', 'easypaisa', 'meezan'] %}
+    <a href="{{ url_for('payments.wallet_checkout', oid=order.id, method=order.payment_method) }}" class="btn btn-op-primary">
+      <i class="bi bi-phone me-1"></i> Pay with
+      {% if order.payment_method == 'jazzcash' %}JazzCash{% elif order.payment_method == 'easypaisa' %}EasyPaisa{% else %}Meezan{% endif %}
+    </a>
+    {% endif %}
     <a href="{{ url_for('orders.order_pdf', oid=order.id) }}" class="btn btn-op-primary">
       <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
     </a>
@@ -15,50 +31,243 @@
 </div>
 
 <div class="row g-4">
-  <div class="col-lg-5">
-    <div class="op-card p-4">
+  <div class="col-lg-4">
+    <div class="op-card p-4 mb-4">
       <h5 class="mb-3">Customer</h5>
       {% if order.customer %}
       <p class="mb-1 fw-semibold">{{ order.customer.name }}</p>
       <p class="text-muted-op mb-0"><i class="bi bi-telephone me-1"></i>{{ order.customer.phone }}</p>
+      {% if order.customer.address %}
+      <p class="small mt-2 mb-0 text-muted-op"><i class="bi bi-geo-alt me-1"></i>{{ order.customer.address }}</p>
+      {% endif %}
       <a href="{{ url_for('customers.customer_detail', cid=order.customer.id) }}" class="btn btn-sm btn-op-ghost mt-3">Customer profile</a>
       {% else %}
       <p class="text-muted-op mb-0">—</p>
       {% endif %}
     </div>
+    <div class="op-card p-4">
+      <h5 class="mb-3">Payment</h5>
+      <dl class="row small mb-0">
+        <dt class="col-5 text-muted-op">Method</dt>
+        <dd class="col-7">{{ order.payment_method|upper }}</dd>
+        <dt class="col-5 text-muted-op">Status</dt>
+        <dd class="col-7">{{ order.payment_status }}</dd>
+        {% if order.payment_reference %}
+        <dt class="col-5 text-muted-op">Reference</dt>
+        <dd class="col-7 text-break">{{ order.payment_reference }}</dd>
+        {% endif %}
+      </dl>
+    </div>
   </div>
-  <div class="col-lg-7">
+  <div class="col-lg-8">
+    <div class="op-card p-4 mb-3">
+      <label class="form-label" for="order-notes">Order notes</label>
+      <textarea id="order-notes" class="form-control" rows="2" placeholder="Kitchen / delivery notes…" {% if order.status == 'cancelled' %}disabled{% endif %}>{{ order.notes or '' }}</textarea>
+    </div>
+
+    {% if order.status != 'cancelled' %}
+    <div class="op-card p-4 mb-3">
+      <label class="form-label" for="fulfillment-type">Service type</label>
+      <select id="fulfillment-type" class="form-select">
+        <option value="dining" {% if order.fulfillment_type|default('takeaway') == 'dining' %}selected{% endif %}>Dine-in</option>
+        <option value="takeaway" {% if order.fulfillment_type|default('takeaway') == 'takeaway' %}selected{% endif %}>Takeaway</option>
+        <option value="delivery" {% if order.fulfillment_type|default('takeaway') == 'delivery' %}selected{% endif %}>Delivery</option>
+      </select>
+      <div id="delivery-address-wrap" class="mt-3" style="display:none;">
+        <label class="form-label" for="delivery-address">Delivery address</label>
+        <textarea id="delivery-address" class="form-control" rows="2">{{ order.delivery_address or '' }}</textarea>
+      </div>
+    </div>
+    {% else %}
+    <div class="op-card p-4 mb-3">
+      <h6 class="mb-2">Service</h6>
+      <p class="mb-1">{{ (order.fulfillment_type|default('takeaway'))|upper }}</p>
+      {% if order.delivery_address %}<p class="small text-muted-op mb-0">{{ order.delivery_address }}</p>{% endif %}
+    </div>
+    {% endif %}
+
     <div class="op-card p-0 overflow-hidden">
       <div class="table-responsive">
-        <table class="table table-darkish mb-0">
+        <table class="table table-darkish mb-0 align-middle">
           <thead>
             <tr>
               <th>Product</th>
-              <th class="text-end">Qty</th>
+              <th class="text-end" style="width:7rem;">Qty</th>
               <th class="text-end">Unit</th>
               <th class="text-end">Line</th>
+              {% if order.status != 'cancelled' %}
+              <th style="width:3rem;"></th>
+              {% endif %}
             </tr>
           </thead>
-          <tbody>
+          <tbody id="order-lines">
             {% for line in order.items|sort(attribute='id') %}
-            <tr>
+            <tr data-line-id="{{ line.id }}" data-product-id="{{ line.product_id }}">
               <td>{% if line.product %}{{ line.product.display_label() }}{% else %}#{{ line.product_id }}{% endif %}</td>
-              <td class="text-end">{{ line.quantity }}</td>
+              <td class="text-end">
+                {% if order.status != 'cancelled' %}
+                <input type="number" min="1" class="form-control form-control-sm text-end line-qty" value="{{ line.quantity }}" data-product-id="{{ line.product_id }}" />
+                {% else %}
+                {{ line.quantity }}
+                {% endif %}
+              </td>
               <td class="text-end">{{ line.price|money }}</td>
-              <td class="text-end fw-semibold">{{ line.line_total|money }}</td>
+              <td class="text-end fw-semibold line-sub">{{ line.line_total|money }}</td>
+              {% if order.status != 'cancelled' %}
+              <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger line-remove" title="Remove">&times;</button></td>
+              {% endif %}
             </tr>
             {% endfor %}
           </tbody>
           <tfoot>
             <tr>
               <th colspan="3" class="text-end">Total</th>
-              <th class="text-end">{{ order.total|money }}</th>
+              <th class="text-end" id="order-total-display">{{ order.total|money }}</th>
+              {% if order.status != 'cancelled' %}<th></th>{% endif %}
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
-    <p class="text-muted-op small mt-2 mb-0">Currency: <strong>{{ config.CURRENCY }}</strong> — set <code>CURRENCY=PKR</code> or <code>CURRENCY=USD</code> in environment.</p>
+
+    {% if order.status != 'cancelled' %}
+    <div class="op-card p-4 mt-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-8">
+          <label class="form-label small text-muted-op">Add product</label>
+          <select id="add-product" class="form-select">
+            <option value="">Choose product…</option>
+            {% for p in products %}
+            <option value="{{ p.id }}" data-price="{{ p.price }}">{{ p.display_label() }} — {{ p.price|money }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button type="button" id="btn-add-product" class="btn btn-op-ghost w-100">Add to order</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button type="button" id="btn-save-order" class="btn btn-op-primary">Save changes</button>
+      <span id="order-edit-msg" class="small align-self-center text-muted-op"></span>
+    </div>
+
+    <form method="post" action="{{ url_for('orders.order_delete', oid=order.id) }}" class="mt-4 pt-3 border-top border-secondary" onsubmit="return confirm('Delete this order? Stock will be restored if it was already deducted.');">
+      <button type="submit" class="btn btn-outline-danger btn-sm">Delete order</button>
+    </form>
+    {% endif %}
+
+    <p class="text-muted-op small mt-3 mb-0">Currency: <strong>{{ config.CURRENCY }}</strong></p>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+{% if order.status != 'cancelled' %}
+<script>
+(function(){
+  const oid = {{ order.id }};
+  const tbody = document.getElementById('order-lines');
+  const addSel = document.getElementById('add-product');
+  const btnAdd = document.getElementById('btn-add-product');
+  const btnSave = document.getElementById('btn-save-order');
+  const msgEl = document.getElementById('order-edit-msg');
+  const notesEl = document.getElementById('order-notes');
+  const totalDisplay = document.getElementById('order-total-display');
+  const ftEl = document.getElementById('fulfillment-type');
+  const dWrap = document.getElementById('delivery-address-wrap');
+  const dAddr = document.getElementById('delivery-address');
+
+  function syncDeliveryBox() {
+    if (!ftEl || !dWrap) return;
+    dWrap.style.display = ftEl.value === 'delivery' ? 'block' : 'none';
+  }
+  if (ftEl) {
+    ftEl.addEventListener('change', syncDeliveryBox);
+    syncDeliveryBox();
+  }
+
+  function collectItems() {
+    const rows = tbody.querySelectorAll('tr[data-product-id]');
+    const map = new Map();
+    rows.forEach(tr => {
+      const pid = parseInt(tr.getAttribute('data-product-id'), 10);
+      const inp = tr.querySelector('.line-qty');
+      const q = inp ? parseInt(inp.value, 10) : 0;
+      if (!pid || !q || q < 1) return;
+      map.set(pid, (map.get(pid) || 0) + q);
+    });
+    return Array.from(map.entries()).map(([product_id, quantity]) => ({ product_id, quantity }));
+  }
+
+  function fmtMoney(n) {
+    var v = Number(n);
+    var parts = v.toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    var s = parts.join('.');
+    return ({{ config.CURRENCY|tojson }} === 'USD') ? ('$' + s) : ('Rs. ' + s);
+  }
+
+  tbody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.line-remove');
+    if (!btn) return;
+    const tr = btn.closest('tr');
+    if (tr) tr.remove();
+  });
+
+  btnAdd.addEventListener('click', () => {
+    const opt = addSel.selectedOptions[0];
+    if (!opt || !opt.value) return;
+    const pid = opt.value;
+    const price = parseFloat(opt.getAttribute('data-price') || '0');
+    const label = opt.textContent.split(' — ')[0];
+    const existing = tbody.querySelector('tr[data-product-id="' + pid + '"]');
+    if (existing) {
+      const inp = existing.querySelector('.line-qty');
+      inp.value = String(parseInt(inp.value, 10) + 1);
+      return;
+    }
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-product-id', pid);
+    tr.innerHTML =
+      '<td>' + label + '</td>' +
+      '<td class="text-end"><input type="number" min="1" class="form-control form-control-sm text-end line-qty" value="1" /></td>' +
+      '<td class="text-end">' + fmtMoney(price) + '</td>' +
+      '<td class="text-end fw-semibold line-sub">' + fmtMoney(price) + '</td>' +
+      '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger line-remove" title="Remove">&times;</button></td>';
+    tr.dataset.productId = pid;
+    tbody.appendChild(tr);
+  });
+
+  btnSave.addEventListener('click', async () => {
+    msgEl.textContent = '';
+    const items = collectItems();
+    if (!items.length) {
+      msgEl.innerHTML = '<span class="text-danger">Add at least one line.</span>';
+      return;
+    }
+    const payload = {
+      items,
+      notes: notesEl.value,
+      fulfillment_type: ftEl ? ftEl.value : 'takeaway',
+      delivery_address: dAddr ? dAddr.value : ''
+    };
+    const res = await fetch('{{ url_for("orders.order_update", oid=order.id) }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      totalDisplay.textContent = fmtMoney(data.total);
+      msgEl.innerHTML = '<span class="text-success">Saved.</span>';
+      setTimeout(() => { msgEl.textContent = ''; }, 2500);
+      window.location.reload();
+    } else {
+      msgEl.innerHTML = '<span class="text-danger">' + (data.error || 'Save failed') + '</span>';
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

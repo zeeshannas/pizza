@@ -10,6 +10,8 @@ class Purchase(db.Model):
     qty = db.Column(db.Float, nullable=False)
     cost = db.Column(db.Float, nullable=False)
     supplier_name = db.Column(db.String(200), nullable=True)
+    payment_method = db.Column(db.String(32), nullable=False, default="cash")
+    payment_reference = db.Column(db.String(128), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     ingredient = db.relationship("Ingredient", back_populates="purchases")

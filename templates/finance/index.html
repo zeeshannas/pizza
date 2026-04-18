@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}Payment center{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Payment &amp; cash flow</h1>
+    <p class="text-muted-op mb-0">Sales (money in) minus inventory purchases (money out).</p>
+  </div>
+</div>
+
+<div class="op-card p-4 mb-4">
+  <form method="get" class="row g-2 align-items-end flex-wrap">
+    <div class="col-auto">
+      <label class="form-label small text-muted-op mb-1">From</label>
+      <input type="date" name="start" class="form-control" value="{{ range_start.isoformat() }}" />
+    </div>
+    <div class="col-auto">
+      <label class="form-label small text-muted-op mb-1">To</label>
+      <input type="date" name="end" class="form-control" value="{{ range_end.isoformat() }}" />
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-op-primary">Apply</button>
+    </div>
+    <div class="col-auto ms-lg-auto d-flex gap-2 flex-wrap">
+      <a class="btn btn-sm btn-op-ghost" href="{{ url_for('finance.finance_home', preset='today') }}">Today</a>
+      <a class="btn btn-sm btn-op-ghost" href="{{ url_for('finance.finance_home', preset='week') }}">Last 7 days</a>
+      <a class="btn btn-sm btn-op-ghost" href="{{ url_for('finance.finance_home', preset='month') }}">This month</a>
+    </div>
+  </form>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="op-stat op-stat--accent h-100">
+      <div class="label">Money in (paid sales)</div>
+      <div class="value">{{ summary.money_in|money }}</div>
+      <div class="small text-muted-op mt-1">{{ summary.order_count }} orders</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="op-stat h-100">
+      <div class="label">Money out (stock purchases)</div>
+      <div class="value">{{ summary.money_out|money }}</div>
+      <div class="small text-muted-op mt-1">{{ summary.purchase_count }} purchases</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="op-stat h-100">
+      <div class="label">Net cash (period)</div>
+      <div class="value">{{ summary.net_cash|money }}</div>
+      <div class="small text-muted-op mt-1">In − out</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3">Sales by payment method</h5>
+      {% if summary.sales_by_payment_method %}
+      <ul class="list-group list-group-flush">
+        {% for row in summary.sales_by_payment_method %}
+        <li class="list-group-item d-flex justify-content-between border-secondary" style="background:transparent;color:var(--op-text);">
+          <span>{{ row.method|upper }}</span>
+          <span class="fw-semibold">{{ row.total|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-op mb-0">No paid sales in this range.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="op-card p-4 h-100">
+      <h5 class="mb-3">Purchases by pay method</h5>
+      {% if summary.purchases_by_payment_method %}
+      <ul class="list-group list-group-flush">
+        {% for row in summary.purchases_by_payment_method %}
+        <li class="list-group-item d-flex justify-content-between border-secondary" style="background:transparent;color:var(--op-text);">
+          <span>{{ row.method|upper }}</span>
+          <span class="fw-semibold">{{ row.total|money }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted-op mb-0">No purchases in this range.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="op-card p-0 overflow-hidden">
+      <div class="p-4 border-bottom border-secondary">
+        <h5 class="mb-0">Recent paid orders</h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-darkish table-sm mb-0 align-middle">
+          <thead><tr><th>#</th><th>When</th><th>Customer</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+            {% for o in orders_rows %}
+            <tr>
+              <td><a href="{{ url_for('orders.order_detail', oid=o.id) }}" style="color:var(--op-accent)">#{{ o.id }}</a></td>
+              <td class="text-muted-op small">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{% if o.customer %}{{ o.customer.name }}{% else %}—{% endif %}</td>
+              <td class="text-end">{{ o.total|money }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted-op py-4">None in range.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="op-card p-0 overflow-hidden">
+      <div class="p-4 border-bottom border-secondary">
+        <h5 class="mb-0">Recent inventory purchases</h5>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-darkish table-sm mb-0 align-middle">
+          <thead><tr><th>When</th><th>Ingredient</th><th class="text-end">Cost</th><th>Paid</th></tr></thead>
+          <tbody>
+            {% for p in purchase_rows %}
+            <tr>
+              <td class="text-muted-op small">{{ p.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{{ p.ingredient.name }}</td>
+              <td class="text-end">{{ p.cost|money }}</td>
+              <td class="small">{{ p.payment_method|default('cash')|upper }}{% if p.payment_reference %} · {{ p.payment_reference }}{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted-op py-4">None in range.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

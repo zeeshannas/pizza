@@ -9,6 +9,7 @@ from extensions import db
 from models.ingredient import Ingredient
 from models.order import Order
 from services.report_service import daily_report, monthly_report, revenue_last_n_days
+from services.finance_service import cash_flow_summary
 
 main_bp = Blueprint("main", __name__)
 
@@ -29,11 +30,14 @@ def dashboard():
     d0 = date.today()
     start = datetime(d0.year, d0.month, d0.day)
     end = start + timedelta(days=1)
+    today_cf = cash_flow_summary(start, end)
     orders_today = int(
         db.session.execute(
             select(func.count(Order.id)).where(
                 Order.created_at >= start,
                 Order.created_at < end,
+                Order.status != "cancelled",
+                Order.payment_status == "paid",
             )
         ).scalar()
         or 0
@@ -87,4 +91,5 @@ def dashboard():
         recent_orders=recent_orders,
         hour_now=_now.hour,
         now=_now,
+        today_cf=today_cf,
     )

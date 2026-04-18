@@ -33,7 +33,16 @@ def add_purchase():
             qty = float(request.form.get("qty"))
             total_cost = float(request.form.get("total_cost"))
             supplier = (request.form.get("supplier_name") or "").strip() or None
-            record_purchase(ing_id, qty, total_cost, supplier_name=supplier)
+            pay_m = (request.form.get("payment_method") or "cash").strip().lower()
+            pay_ref = (request.form.get("payment_reference") or "").strip() or None
+            record_purchase(
+                ing_id,
+                qty,
+                total_cost,
+                supplier_name=supplier,
+                payment_method=pay_m,
+                payment_reference=pay_ref,
+            )
             flash("Purchase recorded and inventory updated.", "success")
             return redirect(url_for("purchases.list_purchases"))
         except ValueError as e:

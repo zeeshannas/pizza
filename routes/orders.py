@@ -1,6 +1,16 @@
 from io import BytesIO
 
-from flask import Blueprint, abort, render_template, send_file
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_login import login_required
 from fpdf import FPDF
 from sqlalchemy import select
@@ -9,6 +19,8 @@ from sqlalchemy.orm import joinedload
 from extensions import db
 from models.order import Order
 from models.order_item import OrderItem
+from models.product import Product
+from services.order_service import delete_order, update_order_contents
 from utils.currency import format_money, get_currency_code
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/orders")
@@ -32,7 +44,74 @@ def order_detail(oid: int):
     order = _load_order(oid)
     if not order:
         abort(404)
-    return render_template("orders/detail.html", order=order)
+    products = (
+        Product.query.filter_by(is_active=True).order_by(Product.name, Product.size).all()
+    )
+    return render_template("orders/detail.html", order=order, products=products)
+
+
+@orders_bp.route("/<int:oid>/delete", methods=["POST"])
+@login_required
+def order_delete(oid: int):
+    try:
+        delete_order(oid)
+        flash("Order deleted. Inventory was restored when stock had already been deducted.", "success")
+        return redirect(url_for("orders.list_orders"))
+    except ValueError as e:
+        flash(str(e), "danger")
+        return redirect(url_for("orders.order_detail", oid=oid))
+
+
+@orders_bp.route("/<int:oid>/update", methods=["POST"])
+@login_required
+def order_update(oid: int):
+    data = request.get_json(silent=True) or {}
+    raw_items = data.get("items")
+    if not isinstance(raw_items, list) or not raw_items:
+        return jsonify({"ok": False, "error": "Invalid items."}), 400
+    items: list[dict] = []
+    for row in raw_items:
+        try:
+            items.append(
+                {
+                    "product_id": int(row["product_id"]),
+                    "quantity": int(row["quantity"]),
+                }
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not items:
+        return jsonify({"ok": False, "error": "No valid lines."}), 400
+    notes = data.get("notes")
+    if not isinstance(notes, str):
+        notes = None
+    fulfillment_type = (
+        data["fulfillment_type"]
+        if "fulfillment_type" in data and isinstance(data["fulfillment_type"], str)
+        else None
+    )
+    delivery_address = (
+        data["delivery_address"]
+        if "delivery_address" in data and isinstance(data["delivery_address"], str)
+        else None
+    )
+    try:
+        order = update_order_contents(
+            oid,
+            items,
+            notes=notes,
+            fulfillment_type=fulfillment_type,
+            delivery_address=delivery_address,
+        )
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    return jsonify(
+        {
+            "ok": True,
+            "order_id": order.id,
+            "total": order.total,
+        }
+    )
 
 
 @orders_bp.route("/<int:oid>/pdf")
@@ -88,12 +167,35 @@ def _build_order_pdf(order: Order, currency: str) -> bytes:
     pdf.set_font("Helvetica", "", 11)
     pdf.cell(0, 7, order.status or "", ln=True)
 
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(40, 7, "Payment", ln=0)
+    pdf.set_font("Helvetica", "", 11)
+    pm = getattr(order, "payment_method", None) or "—"
+    ps = getattr(order, "payment_status", None) or "—"
+    pdf.cell(0, 7, _ascii_safe(f"{pm} / {ps}"), ln=True)
+
+    ft = getattr(order, "fulfillment_type", None) or "takeaway"
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(40, 7, "Service", ln=0)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, _ascii_safe(ft.upper()), ln=True)
+    if ft == "delivery" and getattr(order, "delivery_address", None):
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(40, 7, "Deliver to", ln=0)
+        pdf.set_font("Helvetica", "", 11)
+        pdf.multi_cell(0, 6, _ascii_safe(order.delivery_address))
+
     cust = order.customer
     if cust:
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(40, 7, "Customer", ln=0)
         pdf.set_font("Helvetica", "", 11)
         pdf.cell(0, 7, f"{cust.name} ({cust.phone})", ln=True)
+        if getattr(cust, "address", None) and ft != "delivery":
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.cell(40, 7, "Address", ln=0)
+            pdf.set_font("Helvetica", "", 11)
+            pdf.multi_cell(0, 6, _ascii_safe(cust.address))
 
     pdf.ln(6)
     pdf.set_font("Helvetica", "B", 10)

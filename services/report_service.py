@@ -28,11 +28,15 @@ def _month_range(year: int, month: int) -> tuple[datetime, datetime]:
     return start, end
 
 
+def _paid_order_filters():
+    return (Order.status != "cancelled", Order.payment_status == "paid")
+
+
 def sales_summary(start: datetime, end: datetime) -> dict[str, Any]:
     q = select(func.coalesce(func.sum(Order.total), 0)).where(
         Order.created_at >= start,
         Order.created_at < end,
-        Order.status != "cancelled",
+        *_paid_order_filters(),
     )
     revenue = float(db.session.execute(q).scalar() or 0)
 
@@ -47,7 +51,7 @@ def sales_summary(start: datetime, end: datetime) -> dict[str, Any]:
             select(Order.id).where(
                 Order.created_at >= start,
                 Order.created_at < end,
-                Order.status != "cancelled",
+                *_paid_order_filters(),
             )
         )
         .scalars()
@@ -80,7 +84,7 @@ def top_products(start: datetime, end: datetime, limit: int = 5) -> list[dict[st
         .join(Order, OrderItem.order_id == Order.id)
         .join(Product, OrderItem.product_id == Product.id)
         .where(Order.created_at >= start, Order.created_at < end)
-        .where(Order.status != "cancelled")
+        .where(Order.status != "cancelled", Order.payment_status == "paid")
         .group_by(Product.id, Product.name, Product.size)
         .order_by(func.sum(OrderItem.line_total).desc())
         .limit(limit)
@@ -131,7 +135,7 @@ def revenue_last_n_days(n: int = 7) -> list[dict[str, Any]]:
         .where(
             Order.created_at >= start_dt,
             Order.created_at < end_dt,
-            Order.status != "cancelled",
+            *_paid_order_filters(),
         )
         .group_by(func.date(Order.created_at))
     )

@@ -18,7 +18,9 @@
           <th>Date</th>
           <th>Customer</th>
           <th>Total</th>
+          <th>Service</th>
           <th>Status</th>
+          <th>Payment</th>
           <th></th>
         </tr>
       </thead>
@@ -29,13 +31,15 @@
           <td class="text-muted-op">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
           <td>{% if o.customer %}{{ o.customer.name }}{% else %}—{% endif %}</td>
           <td>{{ o.total|money }}</td>
+          <td><span class="badge bg-secondary">{{ o.fulfillment_type|default('takeaway')|upper }}</span></td>
           <td>{{ o.status }}</td>
+          <td class="small text-muted-op">{{ o.payment_method|upper }} · {{ o.payment_status }}</td>
           <td class="text-end">
             <a class="btn btn-sm btn-op-ghost" href="{{ url_for('orders.order_detail', oid=o.id) }}">View</a>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="text-center text-muted-op py-4">No orders yet.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted-op py-4">No orders yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

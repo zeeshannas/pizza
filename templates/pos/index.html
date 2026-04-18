@@ -4,46 +4,84 @@
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
   <div>
     <h1 class="h3 mb-1">Point of Sale</h1>
-    <p class="text-muted-op mb-0">Add pizzas to the cart, pick a customer, checkout — stock updates automatically. (<strong>{{ config.CURRENCY }}</strong>)</p>
+    <p class="text-muted-op mb-0">Customer, service type (dine-in / takeaway / delivery), then checkout. <strong>{{ config.CURRENCY }}</strong></p>
   </div>
 </div>
 
 <div class="row g-4">
   <div class="col-lg-7">
+    <div class="op-card p-3 mb-3">
+      <div class="input-group">
+        <span class="input-group-text bg-transparent border-secondary"><i class="bi bi-search"></i></span>
+        <input type="search" id="product-search" class="form-control border-secondary" placeholder="Search menu…" autocomplete="off" />
+      </div>
+    </div>
     <div class="op-card p-3">
-      <div class="row g-3">
+      <div class="row g-3" id="product-grid">
         {% for p in products %}
-        <div class="col-md-6">
-          <div class="p-3 rounded-3 border border-secondary" style="background:var(--op-surface-2);">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <div class="fw-semibold">{{ p.name }} <span class="badge bg-secondary">{{ p.size }}</span></div>
+        <div class="col-md-6 product-tile" data-search="{{ (p.name ~ ' ' ~ p.size)|lower }}">
+          <div class="p-3 rounded-3 border border-secondary h-100" style="background:var(--op-surface-2);">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-semibold text-truncate">{{ p.name }} <span class="badge bg-secondary">{{ p.size }}</span></div>
                 <div class="text-muted-op small">{{ p.price|money }}</div>
               </div>
-              <button type="button" class="btn btn-sm btn-op-primary add-to-cart" data-id="{{ p.id }}" data-label="{{ p.name }} ({{ p.size }})" data-price="{{ p.price }}">
+              <button type="button" class="btn btn-sm btn-op-primary flex-shrink-0 add-to-cart" data-id="{{ p.id }}" data-label="{{ p.name }} ({{ p.size }})" data-price="{{ p.price }}">
                 <i class="bi bi-plus-lg"></i>
               </button>
             </div>
           </div>
         </div>
         {% else %}
-        <p class="text-muted-op">No active products. Add products first.</p>
+        <p class="text-muted-op">No active products.</p>
         {% endfor %}
       </div>
     </div>
   </div>
   <div class="col-lg-5">
     <div class="op-card p-4 sticky-top" style="top:1rem;">
-      <h5 class="mb-3">Cart</h5>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Cart</h5>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-cart" title="Clear cart">Clear</button>
+      </div>
       <div class="mb-3">
         <label class="form-label">Customer</label>
-        <select id="customer_id" class="form-select" required>
-          <option value="">Select customer…</option>
-          {% for c in customers %}
-          <option value="{{ c.id }}">{{ c.name }} — {{ c.phone }}</option>
-          {% endfor %}
+        <div class="input-group">
+          <select id="customer_id" class="form-select" required>
+            <option value="">Select customer…</option>
+            {% for c in customers %}
+            <option value="{{ c.id }}" data-address="{{ (c.address or '')|e }}">{{ c.name }} — {{ c.phone }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalQuickCustomer" title="Add customer"><i class="bi bi-person-plus"></i></button>
+        </div>
+        <p class="small text-muted-op mt-1 mb-0">Add new customer with <i class="bi bi-person-plus"></i> without leaving POS.</p>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Service</label>
+        <select id="fulfillment_type" class="form-select">
+          <option value="dining">Dine-in</option>
+          <option value="takeaway" selected>Takeaway</option>
+          <option value="delivery">Delivery</option>
         </select>
-        <a href="{{ url_for('customers.add_customer') }}" class="small mt-1 d-inline-block" style="color:var(--op-accent)">+ New customer</a>
+      </div>
+      <div class="mb-3" id="delivery-address-wrap" style="display:none;">
+        <label class="form-label" for="delivery_address">Delivery address</label>
+        <textarea id="delivery_address" class="form-control" rows="2" placeholder="Uses saved customer address if empty"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Payment</label>
+        <select id="payment_method" class="form-select">
+          <option value="cash" selected>Cash</option>
+          <option value="card">Card</option>
+          <option value="jazzcash">JazzCash</option>
+          <option value="easypaisa">EasyPaisa</option>
+          <option value="meezan">Meezan</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="order-notes">Notes</label>
+        <textarea id="order-notes" class="form-control" rows="2"></textarea>
       </div>
       <ul class="list-group list-group-flush mb-3" id="cart-lines" style="min-height:120px;">
         <li class="list-group-item text-muted-op border-secondary text-center" style="background:transparent;" id="cart-empty">Cart is empty</li>
@@ -52,8 +90,32 @@
         <span class="text-muted-op">Total</span>
         <span class="fs-4 fw-bold" id="cart-total">{{ 0|money }}</span>
       </div>
-      <button type="button" class="btn btn-op-primary w-100 py-2" id="btn-checkout" disabled>Complete sale</button>
+      <button type="button" class="btn btn-op-primary w-100 py-2" id="btn-checkout" disabled>
+        <span class="btn-text">Complete sale</span>
+        <span class="spinner-border spinner-border-sm d-none" id="btn-checkout-spin"></span>
+      </button>
       <div id="checkout-msg" class="small mt-2 text-muted-op"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalQuickCustomer" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--op-surface);border-color:var(--op-border);">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">New customer</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" id="qc-name" /></div>
+        <div class="mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" id="qc-phone" /></div>
+        <div class="mb-0"><label class="form-label">Address</label><textarea class="form-control" id="qc-address" rows="2"></textarea></div>
+        <p id="qc-msg" class="small text-danger mt-2 mb-0"></p>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-op-ghost" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-op-primary" id="qc-save">Save &amp; select</button>
+      </div>
     </div>
   </div>
 </div>
@@ -61,6 +123,7 @@
 {% block scripts %}
 <script>
 window.__OP_CURRENCY__ = {{ config.CURRENCY|tojson }};
+const LS_KEY = 'olive_pizza_pos_cart_v1';
 function fmtMoney(n) {
   var v = Number(n);
   var parts = v.toFixed(2).split('.');
@@ -74,13 +137,60 @@ function fmtMoney(n) {
   const emptyEl = document.getElementById('cart-empty');
   const totalEl = document.getElementById('cart-total');
   const btnCheckout = document.getElementById('btn-checkout');
+  const btnClear = document.getElementById('btn-clear-cart');
   const customerEl = document.getElementById('customer_id');
+  const ftEl = document.getElementById('fulfillment_type');
+  const dWrap = document.getElementById('delivery-address-wrap');
+  const dAddr = document.getElementById('delivery_address');
+  const paymentEl = document.getElementById('payment_method');
+  const notesEl = document.getElementById('order-notes');
   const msgEl = document.getElementById('checkout-msg');
+  const spinEl = document.getElementById('btn-checkout-spin');
+  const btnTextEl = document.querySelector('#btn-checkout .btn-text');
+  const searchEl = document.getElementById('product-search');
 
+  function selAddr() {
+    const opt = customerEl.selectedOptions[0];
+    if (!opt || !opt.value) return '';
+    return opt.getAttribute('data-address') || '';
+  }
+  function syncDeliveryBox() {
+    if (!ftEl || !dWrap) return;
+    dWrap.style.display = ftEl.value === 'delivery' ? 'block' : 'none';
+    if (ftEl.value === 'delivery' && dAddr && !dAddr.value.trim()) dAddr.value = selAddr();
+  }
+  if (ftEl) {
+    ftEl.addEventListener('change', () => {
+      syncDeliveryBox();
+      if (ftEl.value === 'delivery' && dAddr && !dAddr.value.trim()) dAddr.value = selAddr();
+    });
+    syncDeliveryBox();
+  }
+  customerEl.addEventListener('change', () => {
+    if (ftEl && ftEl.value === 'delivery' && dAddr) dAddr.value = selAddr();
+    btnCheckout.disabled = !(customerEl.value && cart.size > 0);
+  });
+
+  function saveCart() {
+    const o = {};
+    cart.forEach((row, pid) => { o[pid] = row; });
+    try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function loadCart() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const o = JSON.parse(raw);
+      cart.clear();
+      Object.keys(o).forEach(pid => {
+        const row = o[pid];
+        if (row && row.label && row.qty) cart.set(pid, row);
+      });
+    } catch (e) {}
+  }
   function syncBtn() {
     btnCheckout.disabled = !(customerEl.value && cart.size > 0);
   }
-
   function render() {
     linesEl.querySelectorAll('.cart-line').forEach(e => e.remove());
     let total = 0;
@@ -88,41 +198,38 @@ function fmtMoney(n) {
       emptyEl.style.display = '';
       totalEl.textContent = fmtMoney(0);
       syncBtn();
+      saveCart();
       return;
     }
     emptyEl.style.display = 'none';
     cart.forEach((row, pid) => {
       const li = document.createElement('li');
-      li.className = 'list-group-item cart-line d-flex justify-content-between align-items-center border-secondary';
+      li.className = 'list-group-item cart-line border-secondary';
       li.style.background = 'transparent';
       li.style.color = 'var(--op-text)';
       const sub = row.price * row.qty;
       total += sub;
-      li.innerHTML = '<span>' + row.label + ' × ' + row.qty + '</span>' +
-        '<span class="d-flex align-items-center gap-2">' +
-          '<span class="text-muted-op">' + fmtMoney(sub) + '</span>' +
-          '<button type="button" class="btn btn-sm btn-outline-light" data-dec="' + pid + '">−</button>' +
-        '</span>';
+      li.innerHTML =
+        '<div class="d-flex justify-content-between align-items-start gap-2">' +
+          '<div class="min-w-0 flex-grow-1"><div class="small fw-semibold text-truncate">' + row.label + '</div>' +
+          '<div class="text-muted-op small">' + fmtMoney(row.price) + ' each</div></div>' +
+          '<div class="d-flex align-items-center gap-1 flex-shrink-0">' +
+            '<button type="button" class="btn btn-sm btn-outline-light px-2" data-dec="' + pid + '">−</button>' +
+            '<input type="number" min="1" class="form-control form-control-sm text-center cart-qty" style="width:3.25rem" data-pid="' + pid + '" value="' + row.qty + '" />' +
+            '<button type="button" class="btn btn-sm btn-outline-light px-2" data-inc="' + pid + '">+</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger ms-1" data-del="' + pid + '">&times;</button>' +
+          '</div></div>' +
+        '<div class="text-end small text-muted-op mt-1">' + fmtMoney(sub) + '</div>';
       linesEl.appendChild(li);
     });
     totalEl.textContent = fmtMoney(total);
     syncBtn();
+    saveCart();
   }
-
-  document.querySelectorAll('.add-to-cart').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      const label = btn.dataset.label;
-      const price = parseFloat(btn.dataset.price);
-      const cur = cart.get(id) || { label, price, qty: 0 };
-      cur.qty += 1;
-      cart.set(id, cur);
-      render();
-    });
-  });
 
   linesEl.addEventListener('click', (e) => {
     const t = e.target;
+    if (t.matches('button[data-del]')) { cart.delete(t.getAttribute('data-del')); render(); return; }
     if (t.matches('button[data-dec]')) {
       const pid = t.getAttribute('data-dec');
       const row = cart.get(pid);
@@ -130,35 +237,131 @@ function fmtMoney(n) {
       row.qty -= 1;
       if (row.qty <= 0) cart.delete(pid); else cart.set(pid, row);
       render();
+      return;
+    }
+    if (t.matches('button[data-inc]')) {
+      const pid = t.getAttribute('data-inc');
+      const row = cart.get(pid);
+      if (!row) return;
+      row.qty += 1;
+      cart.set(pid, row);
+      render();
     }
   });
+  linesEl.addEventListener('change', (e) => {
+    const inp = e.target;
+    if (!inp.matches || !inp.matches('input.cart-qty')) return;
+    const pid = inp.getAttribute('data-pid');
+    let q = parseInt(inp.value, 10);
+    if (!q || q < 1) q = 1;
+    const row = cart.get(pid);
+    if (!row) return;
+    row.qty = q;
+    cart.set(pid, row);
+    render();
+  });
 
-  customerEl.addEventListener('change', syncBtn);
+  document.querySelectorAll('.add-to-cart').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const cur = cart.get(id) || { label: btn.dataset.label, price: parseFloat(btn.dataset.price), qty: 0 };
+      cur.qty += 1;
+      cart.set(id, cur);
+      render();
+    });
+  });
+
+  btnClear.addEventListener('click', () => {
+    if (!cart.size) return;
+    if (!confirm('Clear cart?')) return;
+    cart.clear();
+    render();
+  });
+
+  searchEl.addEventListener('input', () => {
+    const q = (searchEl.value || '').trim().toLowerCase();
+    document.querySelectorAll('.product-tile').forEach(el => {
+      const hay = el.getAttribute('data-search') || '';
+      el.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+
+  document.getElementById('qc-save').addEventListener('click', async () => {
+    document.getElementById('qc-msg').textContent = '';
+    const res = await fetch('{{ url_for("pos.quick_add_customer") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('qc-name').value,
+        phone: document.getElementById('qc-phone').value,
+        address: document.getElementById('qc-address').value
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('qc-msg').textContent = data.error || 'Error';
+      return;
+    }
+    const cust = data.customer;
+    const opt = document.createElement('option');
+    opt.value = String(cust.id);
+    opt.textContent = cust.name + ' — ' + cust.phone;
+    opt.setAttribute('data-address', cust.address || '');
+    customerEl.appendChild(opt);
+    customerEl.value = String(cust.id);
+    syncBtn();
+    if (ftEl && ftEl.value === 'delivery' && dAddr) dAddr.value = cust.address || '';
+    const modalEl = document.getElementById('modalQuickCustomer');
+    (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).hide();
+    document.getElementById('qc-name').value = '';
+    document.getElementById('qc-phone').value = '';
+    document.getElementById('qc-address').value = '';
+  });
 
   btnCheckout.addEventListener('click', async () => {
-    msgEl.textContent = '';
-    const customer_id = parseInt(customerEl.value, 10);
+    msgEl.innerHTML = '';
     const items = [];
-    cart.forEach((row, pid) => {
-      items.push({ product_id: parseInt(pid, 10), quantity: row.qty });
-    });
+    cart.forEach((row, pid) => items.push({ product_id: parseInt(pid, 10), quantity: row.qty }));
+    btnCheckout.disabled = true;
+    spinEl.classList.remove('d-none');
+    if (btnTextEl) btnTextEl.classList.add('opacity-50');
     const res = await fetch('{{ url_for("pos.checkout") }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_id, items })
+      body: JSON.stringify({
+        customer_id: parseInt(customerEl.value, 10),
+        items,
+        payment_method: paymentEl.value,
+        notes: notesEl.value,
+        fulfillment_type: ftEl ? ftEl.value : 'takeaway',
+        delivery_address: dAddr ? dAddr.value : ''
+      })
     });
     const data = await res.json();
+    spinEl.classList.add('d-none');
+    if (btnTextEl) btnTextEl.classList.remove('opacity-50');
+    syncBtn();
     if (data.ok) {
       var viewUrl = '{{ url_for("orders.order_detail", oid=999999) }}'.replace('999999', String(data.order_id));
-      msgEl.innerHTML = '<span class="text-success">Order #' + data.order_id + ' — ' + fmtMoney(data.total) +
-        ' · <a href="' + viewUrl + '" style="color:var(--op-accent)">View order</a></span>';
+      if (data.requires_payment && data.wallet_checkout_url) {
+        msgEl.innerHTML = '<span class="text-success d-block mb-2">Order #' + data.order_id + ' — ' + fmtMoney(data.total) + '</span>' +
+          '<a class="btn btn-op-primary btn-sm w-100 mb-2" href="' + data.wallet_checkout_url + '">Pay online</a>' +
+          '<a href="' + viewUrl + '">View order</a>';
+      } else {
+        msgEl.innerHTML = '<span class="text-success">Order #' + data.order_id + ' — ' + fmtMoney(data.total) +
+          ' · <a href="' + viewUrl + '">View</a></span>';
+      }
       cart.clear();
+      try { localStorage.removeItem(LS_KEY); } catch (e) {}
+      notesEl.value = '';
+      if (dAddr) dAddr.value = '';
       render();
     } else {
-      msgEl.innerHTML = '<span class="text-danger">' + (data.error || 'Checkout failed') + '</span>';
+      msgEl.innerHTML = '<span class="text-danger">' + (data.error || 'Failed') + '</span>';
     }
   });
 
+  loadCart();
   render();
 })();
 </script>

@@ -34,6 +34,9 @@
         <a class="nav-link {% if request.blueprint == 'orders' %}active{% endif %}" href="{{ url_for('orders.list_orders') }}">
           <i class="bi bi-receipt me-2"></i> Orders
         </a>
+        <a class="nav-link {% if request.blueprint == 'finance' %}active{% endif %}" href="{{ url_for('finance.finance_home') }}">
+          <i class="bi bi-wallet2 me-2"></i> Payments
+        </a>
         <a class="nav-link {% if request.blueprint == 'customers' %}active{% endif %}" href="{{ url_for('customers.list_customers') }}">
           <i class="bi bi-people me-2"></i> Customers
         </a>

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Pay order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="op-card p-4">
+      <h1 class="h4 mb-3">Complete payment</h1>
+      <p class="text-muted-op mb-2">Order <strong>#{{ order.id }}</strong> · {{ order.total|money }} ·
+        {% if method == 'jazzcash' %}JazzCash{% elif method == 'easypaisa' %}EasyPaisa{% else %}Meezan Bank{% endif %}
+      </p>
+      {% if order.customer %}
+      <p class="small text-muted-op mb-4">{{ order.customer.name }} — {{ order.customer.phone }}</p>
+      {% endif %}
+
+      {% if demo %}
+      <div class="alert alert-warning border-0 mb-4">
+        <strong>Demo / sandbox.</strong> Merchant credentials for this provider are not set in the environment.
+        Use the button below to simulate a successful payment locally (inventory will be applied).
+      </div>
+      <form method="post" action="{{ url_for('payments.demo_complete_payment', oid=order.id) }}">
+        <button type="submit" class="btn btn-op-primary btn-lg w-100">Simulate successful payment</button>
+      </form>
+      <a href="{{ url_for('orders.order_detail', oid=order.id) }}" class="btn btn-op-ghost w-100 mt-3">Back to order</a>
+      {% else %}
+      <p class="small text-muted-op mb-3">Redirecting you to the secure payment page… If nothing happens, click Pay now.</p>
+      <form id="gw-form" method="post" action="{{ action_url }}">
+        {% for key, val in fields.items() %}
+        <input type="hidden" name="{{ key }}" value="{{ val }}" />
+        {% endfor %}
+        <button type="submit" class="btn btn-op-primary btn-lg w-100">Pay now</button>
+      </form>
+      <script>
+        document.getElementById('gw-form').submit();
+      </script>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

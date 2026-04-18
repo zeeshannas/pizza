@@ -5,6 +5,9 @@
   <div>
     <h1 class="h3 mb-1">{{ customer.name }}</h1>
     <p class="text-muted-op mb-0"><i class="bi bi-telephone me-1"></i>{{ customer.phone }}</p>
+    {% if customer.address %}
+    <p class="mt-3 mb-0 small"><i class="bi bi-geo-alt me-1"></i>{{ customer.address }}</p>
+    {% endif %}
   </div>
   <a href="{{ url_for('customers.edit_customer', cid=customer.id) }}" class="btn btn-op-ghost">Edit</a>
 </div>
@@ -14,12 +17,13 @@
   {% if orders %}
   <div class="table-responsive">
     <table class="table table-darkish mb-0">
-      <thead><tr><th>ID</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Date</th><th>Service</th><th>Total</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {% for o in orders %}
         <tr>
           <td><a href="{{ url_for('orders.order_detail', oid=o.id) }}" class="text-decoration-none" style="color:var(--op-accent)">#{{ o.id }}</a></td>
           <td class="text-muted-op">{{ o.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td><span class="badge bg-secondary">{{ o.fulfillment_type|default('takeaway')|upper }}</span></td>
           <td>{{ o.total|money }}</td>
           <td>{{ o.status }}</td>
           <td class="text-end"><a class="btn btn-sm btn-op-ghost" href="{{ url_for('orders.order_detail', oid=o.id) }}">Detail</a></td>
